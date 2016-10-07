@@ -11,10 +11,12 @@
 class Debug_Bar_Slow_Actions {
 	public $start;
 	public $flow;
+	public $stack;
 
 	function __construct() {
 		$this->start = microtime( true );
 		$this->flow = array();
+		$this->stack = array();
 
 		add_action( 'all', array( $this, 'time_start' ) );
 		add_filter( 'debug_bar_panels', array( $this, 'debug_bar_panels' ), 9000 );
@@ -34,6 +36,7 @@ class Debug_Bar_Slow_Actions {
 			add_action( current_filter(), array( $this, 'time_stop' ), 9000 );
 		}
 
+		array_push( $this->stack, current_filter() );
 		$count = ++$this->flow[ current_filter() ]['count'];
 		array_push( $this->flow[ current_filter() ]['stack'], array( 'start' => microtime( true ) ) );
 	}
@@ -42,6 +45,12 @@ class Debug_Bar_Slow_Actions {
 		$time = array_pop( $this->flow[ current_filter() ]['stack'] );
 		$time['stop'] = microtime( true );
 		array_push( $this->flow[ current_filter() ]['time'], $time );
+
+		array_pop($this->stack);
+		if(!empty($this->stack)) {
+			$last = end($this->stack);
+			array_push( $this->flow[ $last ]['time'], array("sub" => $time["stop"] - $time["start"]) );
+		}
 
 		// In case this was a filter.
 		return $value;
@@ -87,8 +96,12 @@ class Debug_Bar_Slow_Actions {
 
 		foreach ( $this->flow as $action => $data ) {
 			$total = 0;
-			foreach ( $data['time'] as $time )
-				$total += ( $time['stop'] - $time['start'] ) * 1000;
+			foreach ( $data['time'] as $time ){
+				if(isset($time["sub"]))
+					$total -= $time["sub"] * 1000;
+				else
+					$total += ( $time['stop'] - $time['start'] ) * 1000;
+			}
 
 			$this->flow[ $action ]['total'] = $total;
 			$total_actions_time += $total;

@@ -118,6 +118,10 @@ class Debug_Bar_Slow_Actions {
 				foreach ( $callbacks as $callback ) {
 					if ( is_array( $callback['function'] ) && count( $callback['function'] == 2 ) ) {
 						list( $object_or_class, $method ) = $callback['function'];
+						
+						if($object_or_class == $this) // ignore Debug_Bar_Slow_Actions on output
+							continue;
+
 						if ( is_object( $object_or_class ) ) {
 							$object_or_class = get_class( $object_or_class );
 						}

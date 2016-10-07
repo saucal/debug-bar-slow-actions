@@ -236,7 +236,7 @@ EOD;
 		<script>
 			(function($){
 				$('#dbsa-container td').on('click', function() {
-					$(this).parents('tr').toggleClass('dbsa-expanded');
+					$(this).parents('tr').first().toggleClass('dbsa-expanded');
 				});
 			}(jQuery));
 		</script>

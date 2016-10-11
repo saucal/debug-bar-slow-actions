@@ -12,14 +12,17 @@ class Debug_Bar_Slow_Actions {
 	public $start;
 	public $flow;
 	public $stack;
+	private $echoed;
 
 	function __construct() {
 		$this->start = microtime( true );
 		$this->flow = array();
 		$this->stack = array();
+		$this->echoed = false;
 
 		add_action( 'all', array( $this, 'time_start' ) );
 		add_filter( 'debug_bar_panels', array( $this, 'debug_bar_panels' ), 9000 );
+		add_action( 'shutdown', array( $this, 'maybe_save_for_next' ), 9000 );
 		// add_action( 'wp_footer', function() { print_r( $this->flow ); }, 9000 );
 	}
 
@@ -117,7 +120,10 @@ class Debug_Bar_Slow_Actions {
 			}
 		}
 
-		printf( '<div id="dbsa-container">%s</div>', $this->output() );
+		$this->echoed = true;
+
+		printf( '<div id="dbsa-container">%s %s</div>', get_option( "dbsa_stack", "" ), $this->output() );
+		delete_option( "dbsa_stack" );
 	}
 
 	function sort_actions_by_time( $a, $b ) {
@@ -127,7 +133,7 @@ class Debug_Bar_Slow_Actions {
     	return ( $a['total'] > $b['total'] ) ? -1 : 1;
 	}
 
-	function output() {
+	function output($scripts = true) {
 		global $wp_filter;
 
 		$output = '';
@@ -251,6 +257,9 @@ class Debug_Bar_Slow_Actions {
 
 		$output .= $table;
 
+		if(!$scripts)
+			return $output;
+
 		$output .= <<<EOD
 		<style>
 			#dbsa-container table {
@@ -339,6 +348,17 @@ EOD;
 EOD;
 
 		return $output;
+	}
+
+	function maybe_save_for_next() {
+		if($this->echoed || ( defined("DOING_AJAX") && DOING_AJAX ) )
+			return;
+
+		$output = get_option( "dbsa_stack", "" );
+
+		$output .= $this->output(false);
+
+		update_option( "dbsa_stack", $output, false );
 	}
 }
 new Debug_Bar_Slow_Actions;
